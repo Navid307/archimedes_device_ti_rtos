@@ -68,6 +68,7 @@
 #include "hal_assert.h"
 #include "bcomdef.h"
 #include "project_zero.h"
+#include "arch_ble_application.h"
 
 #ifndef USE_DEFAULT_USER_CFG
 #include "ble_user_config.h"
@@ -186,7 +187,8 @@ int main()
     ICall_createRemoteTasks();
 #endif
 
-    ProjectZero_createTask();
+    //ProjectZero_createTask();
+    ArchBleApplication_createTask();
 
     /* enable interrupts and start SYS/BIOS */
     BIOS_start();

@@ -12,11 +12,19 @@
 extern "C" {
 #endif
 
+#include <string.h>
+
+//#include <xdc/runtime/Log.h> // Comment this in to use xdc.runtime.Log
+#include <ti/common/cc26xx/uartlog/UartLog.h>  // Comment out if using xdc Log
+
+#include <icall.h>
+#include "icall_ble_api.h"
+
 #include <bcomdef.h>
 
 // Service UUID
-#define ARCH_BLE_PRESSURE_SERVICE_SERV_UUID 0x1120
-#define ARCH_BLE_PRESSURE_SERVICE_UUID_BASE128(uuid) 0x00, 0x00, 0x00, 0x00, 0x00, \
+#define PRESSURE_SERVICE_SERV_UUID 0x1120
+#define PRESSURE_SERVICE_UUID_BASE128(uuid) 0x00, 0x00, 0x00, 0x00, 0x00, \
     0x00, 0x00, 0xB0, 0x00, 0x40, 0x51, 0x04, LO_UINT16(uuid), HI_UINT16(uuid), \
     0x00, 0xF0
 

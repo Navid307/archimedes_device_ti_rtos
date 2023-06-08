@@ -5,20 +5,13 @@
  *      Author: navid
  */
 
-#include <string.h>
-
-//#include <xdc/runtime/Log.h> // Comment this in to use xdc.runtime.Log
-#include <ti/common/cc26xx/uartlog/UartLog.h>  // Comment out if using xdc Log
-
-#include <icall.h>
-#include "icall_ble_api.h"
 
 #include "arch_ble_pressure_service.h"
 
 // Button_Service Service UUID
 CONST uint8_t PressureServiceUUID[ATT_UUID_SIZE] = {
-        ARCH_BLE_PRESSURE_SERVICE_UUID_BASE128(
-                ARCH_BLE_PRESSURE_SERVICE_SERV_UUID)
+        PRESSURE_SERVICE_UUID_BASE128(
+                PRESSURE_SERVICE_SERV_UUID)
 };
 
 CONST uint8_t ps_BEEFUUID[ATT_UUID_SIZE] =
