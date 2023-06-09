@@ -186,13 +186,20 @@ static List_List setPhyCommStatList;
 static List_List paramUpdateList;
 
 // Clock objects for debouncing the buttons
-static Clock_Struct button0DebounceClock; static Clock_Struct button1DebounceClock; static Clock_Handle button0DebounceClockHandle; static Clock_Handle button1DebounceClockHandle;
+static Clock_Struct button0DebounceClock;
+
+static Clock_Struct button1DebounceClock;
+
+static Clock_Handle button0DebounceClockHandle;
+
+static Clock_Handle button1DebounceClockHandle;
 
 // Clock instance for RPA read events.
 static Clock_Struct clkRpaRead;
 
 // State of the buttons 
 static uint8_t button0State = 0;// TODO: Remove after test
+
 static uint8_t button1State = 0;
 
 // Variable used to store the number of messages pending once OAD completes
@@ -239,24 +246,64 @@ static void ArchBleApplication_PressureService_ValueChangeHandler( aCharacterist
 static void ArchBleApplication_PressureService_CfgChangeHandler( aCharacteristicData_t *pCharData);
 
 /* Stack or profile callback function */
-static void ArchBleApplication_advCallback(uint32_t event, void *pBuf, uintptr_t arg); static void ArchBleApplication_passcodeCb(uint8_t *pDeviceAddr, uint16_t connHandle, uint8_t uiInputs, uint8_t uiOutputs, uint32_t numComparison); static void ArchBleApplication_pairStateCb(uint16_t connHandle, uint8_t state, uint8_t status);
+static void ArchBleApplication_advCallback(uint32_t event, void *pBuf, uintptr_t arg);
+
+static void ArchBleApplication_passcodeCb(uint8_t *pDeviceAddr, uint16_t connHandle, uint8_t uiInputs, uint8_t uiOutputs, uint32_t numComparison);
+
+static void ArchBleApplication_pairStateCb(uint16_t connHandle, uint8_t state, uint8_t status);
 
 static void ArchBleApplication_PressureService_ValueChangeCB(uint16_t connHandle, uint8_t paramID, uint16_t len, uint8_t *pValue);
 
 static void ArchBleApplication_PressureService_CfgChangeCB(uint16_t connHandle, uint8_t paramID, uint16_t len, uint8_t *pValue);
 
 /* Connection handling functions */
-static uint8_t ArchBleApplication_getConnIndex(uint16_t connHandle); static uint8_t ArchBleApplication_clearConnListEntry(uint16_t connHandle); static uint8_t ArchBleApplication_addConn(uint16_t connHandle); static uint8_t ArchBleApplication_removeConn(uint16_t connHandle); static void ArchBleApplication_updatePHYStat(uint16_t eventCode, uint8_t *pMsg); static void ArchBleApplication_handleUpdateLinkParamReq( gapUpdateLinkParamReqEvent_t *pReq); static void ArchBleApplication_sendParamUpdate(uint16_t connHandle); static void ArchBleApplication_handleUpdateLinkEvent(gapLinkUpdateEvent_t *pEvt);
+static uint8_t ArchBleApplication_getConnIndex(uint16_t connHandle);
+
+static uint8_t ArchBleApplication_clearConnListEntry(uint16_t connHandle);
+
+static uint8_t ArchBleApplication_addConn(uint16_t connHandle);
+
+static uint8_t ArchBleApplication_removeConn(uint16_t connHandle);
+
+static void ArchBleApplication_updatePHYStat(uint16_t eventCode, uint8_t *pMsg);
+
+static void ArchBleApplication_handleUpdateLinkParamReq( gapUpdateLinkParamReqEvent_t *pReq);
+
+static void ArchBleApplication_sendParamUpdate(uint16_t connHandle);
+
+static void ArchBleApplication_handleUpdateLinkEvent(gapLinkUpdateEvent_t *pEvt);
+
 #ifdef DEFAULT_SEND_PARAM_UPDATE_REQ
+
 static void ArchBleApplication_paramUpdClockHandler(UArg arg);
+
 #endif
-static void ArchBleApplication_clockHandler(UArg arg); static void ArchBleApplication_processConnEvt(Gap_ConnEventRpt_t *pReport); static void ArchBleApplication_connEvtCB(Gap_ConnEventRpt_t *pReport);
+
+static void ArchBleApplication_clockHandler(UArg arg);
+
+static void ArchBleApplication_processConnEvt(Gap_ConnEventRpt_t *pReport);
+
+static void ArchBleApplication_connEvtCB(Gap_ConnEventRpt_t *pReport);
 
 /* Button handling functions */
-static void buttonDebounceSwiFxn(UArg buttonId); static void GPIO_Board_keyCallback(uint_least8_t index); static void ArchBleApplication_handleButtonPress(aButtonState_t *pState);
+static void buttonDebounceSwiFxn(UArg buttonId); static void GPIO_Board_keyCallback(uint_least8_t index);
+
+static void ArchBleApplication_handleButtonPress(aButtonState_t *pState);
 
 /* Utility functions */
-static status_t ArchBleApplication_enqueueMsg(uint8_t event, void *pData); static char * util_arrtohex(uint8_t const *src, uint8_t src_len, uint8_t *dst, uint8_t dst_len, uint8_t reverse); static char * util_getLocalNameStr(const uint8_t *advData, uint8_t len); static void ArchBleApplication_processOadWriteCB(uint8_t event, uint16_t arg); static void ArchBleApplication_processL2CAPMsg(l2capSignalEvent_t *pMsg); static void ArchBleApplication_checkSvcChgndFlag(uint32_t flag); static void ArchBleApplication_bootManagerCheck(uint_least8_t revertIo, uint_least8_t eraseIo);
+static status_t ArchBleApplication_enqueueMsg(uint8_t event, void *pData);
+
+static char * util_arrtohex(uint8_t const *src, uint8_t src_len, uint8_t *dst, uint8_t dst_len, uint8_t reverse);
+
+static char * util_getLocalNameStr(const uint8_t *advData, uint8_t len);
+
+static void ArchBleApplication_processOadWriteCB(uint8_t event, uint16_t arg);
+
+static void ArchBleApplication_processL2CAPMsg(l2capSignalEvent_t *pMsg);
+
+static void ArchBleApplication_checkSvcChgndFlag(uint32_t flag);
+
+static void ArchBleApplication_bootManagerCheck(uint_least8_t revertIo, uint_least8_t eraseIo);
 
 /*********************************************************************
  * EXTERN FUNCTIONS
