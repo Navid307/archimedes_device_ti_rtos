@@ -303,8 +303,6 @@ static void ArchBleApplication_processL2CAPMsg(l2capSignalEvent_t *pMsg);
 
 static void ArchBleApplication_checkSvcChgndFlag(uint32_t flag);
 
-static void ArchBleApplication_bootManagerCheck(uint_least8_t revertIo, uint_least8_t eraseIo);
-
 /*********************************************************************
  * EXTERN FUNCTIONS
  */
@@ -411,25 +409,6 @@ static void ArchBleApplication_init(void)
 
     // Add services to GATT server and give ID of this task for Indication acks.
     PressureService_AddService(selfEntity);
-
-    // Open the OAD module and add the OAD service to the application
-    if (OAD_SUCCESS != OAD_open(OAD_DEFAULT_INACTIVITY_TIME))
-    {
-        Log_error0("OAD failed to open");
-    }
-    else
-    {
-        // Resiter the OAD callback with the application
-        OAD_register(&ArchBleApplication_oadCBs);
-        Log_info0("Registered OAD Service");
-    }
-
-    // Check button state on reset to do ExtFlash erase or revert to factory.
-    // We do this after the OAD init because if the external flash is empty
-    // it will copy the current image into the factory image slot in external
-    // flash.
-    ArchBleApplication_bootManagerCheck(CONFIG_GPIO_BTN1,
-    CONFIG_GPIO_BTN2);
 
     // Capture the current OAD version and log it
     static uint8_t versionStr[OAD_SW_VER_LEN + 1];
@@ -860,8 +839,8 @@ static void ArchBleApplication_processGapMessage(gapEventHdr_t *pMsg)
             systemId[5] = pPkt->devAddr[3];
 
             // Set Device Info Service Parameter
-            DevInfo_SetParameter(DEVINFO_SYSTEM_ID, DEVINFO_SYSTEM_ID_LEN,
-                                 systemId);
+            //DevInfo_SetParameter(DEVINFO_SYSTEM_ID, DEVINFO_SYSTEM_ID_LEN,
+            //                     systemId);
             // Display device address
             // Need static so string persists until printed in idle thread.
             static uint8_t addrStr[3 * B_ADDR_LEN + 1];
@@ -999,7 +978,6 @@ static void ArchBleApplication_processGapMessage(gapEventHdr_t *pMsg)
         ArchBleApplication_handleUpdateLinkParamReq(
                 (gapUpdateLinkParamReqEvent_t*) pMsg);
         break;
-
     case GAP_LINK_PARAM_UPDATE_EVENT:
         ArchBleApplication_handleUpdateLinkEvent((gapLinkUpdateEvent_t*) pMsg);
         break;
@@ -1953,152 +1931,3 @@ static char* util_getLocalNameStr(const uint8_t *data, uint8_t len)
 
     return (localNameStr);
 }
-void ArchBleApplication_eraseExternalFlash(void)
-{
-    NVS_Handle nvsHandle;
-    NVS_Attrs regionAttrs;
-    NVS_Params nvsParams;
-
-    NVS_init();
-    NVS_Params_init(&nvsParams);
-
-    Log_info0("Opening external flash for mass erase");
-    nvsHandle = NVS_open(CONFIG_NVSEXTERNAL, &nvsParams);
-    if (nvsHandle == NULL)
-    {
-        Log_error0("Failed to open external flash");
-        return;
-    }
-    NVS_getAttrs(nvsHandle, &regionAttrs);
-    Log_info3("ExtFlash regionBase: 0x%x, regionSize: 0x%x, sectorSize: 0x%x",
-              (uintptr_t )regionAttrs.regionBase,
-              (uintptr_t )regionAttrs.regionSize,
-              (uintptr_t )regionAttrs.sectorSize);
-
-    // Do sector by sector erase
-    for (uint32_t offset = 0; offset < regionAttrs.regionSize; offset +=
-            regionAttrs.sectorSize)
-    {
-        uint16_t status = NVS_erase(nvsHandle, offset, regionAttrs.sectorSize);
-
-        // Sleep every 16th erase to print log and serve other things like network
-        uint32_t curSector = (offset / regionAttrs.sectorSize);
-        if ((curSector & 0xf) == 0xf)
-        {
-            Log_info3("Erase sector %d..%d, status: %d", curSector - 0xf,
-                      curSector, status);
-            Task_sleep(20 * (1000 / Clock_tickPeriod));
-        }
-    }
-
-    // Block until ready with meaningless read.
-    uint32_t buf;
-    NVS_read(nvsHandle, 0, &buf, sizeof(buf));
-
-    Log_info0("External flash erase complete");
-    NVS_close(nvsHandle);
-}
-
-static void ArchBleApplication_revertToFactoryImage(void)
-{
-    extern const imgHdr_t _imgHdr;
-
-    uint32_t key = HwiP_disable();
-
-    uint8_t invalidCrc = CRC_INVALID;
-    uint32_t retVal = FlashProgram(&invalidCrc,
-                                   (uint32_t) & _imgHdr.fixedHdr.crcStat,
-                                   sizeof(invalidCrc));
-    if (retVal == FAPI_STATUS_SUCCESS)
-    {
-        Log_info0("CRC Status invalidated. Rebooting into BIM.");
-        Task_sleep(50 * (1000 / Clock_tickPeriod));
-        SysCtrlSystemReset();
-        // We never reach here.
-    }
-    else
-    {
-        Log_error1("CRC Invalidate write failed. Status 0x%x", retVal);
-        Log_error0("Continuing boot");
-    }
-
-    HwiP_restore(key);
-}
-
-static void ArchBleApplication_bootManagerCheck(uint_least8_t revertIo,
-                                                uint_least8_t eraseIo)
-{
-    uint32_t sleepDuration = 5000 * (1000 / Clock_tickPeriod);
-    uint32_t sleepInterval = 50 * (1000 / Clock_tickPeriod);
-
-    uint32_t revertIoInit = GPIO_read(revertIo);
-    uint32_t eraseIoInit = GPIO_read(eraseIo);
-
-    if (revertIoInit)
-    {
-        Log_info0("Left button not held under boot, "
-                  "not reverting to factory.");
-        Log_info0("Right+Left button not held under boot, "
-                  "not erasing external flash.");
-        return;
-    }
-
-    if (revertIoInit == 0 && eraseIoInit == 0)
-    {
-        Log_warning0("Right+Left button held after reset.");
-        Log_warning0("Hold for 5 seconds to erase external flash.");
-        Log_warning0("Note that this will also remove the \"factory image\".");
-
-        for (uint32_t i = 0; i < sleepDuration / sleepInterval; ++i)
-        {
-            Task_sleep(sleepInterval);
-
-            if (GPIO_read(revertIo) || GPIO_read(eraseIo))
-            {
-                break;
-            }
-        }
-
-        if (GPIO_read(revertIo) == 0 && GPIO_read(eraseIo) == 0)
-        {
-            ArchBleApplication_eraseExternalFlash();
-            Log_warning0("There is now no factory image in external flash "
-                         "to revert to");
-            Log_warning0("Reset the device to make this the factory image");
-        }
-        else
-        {
-            Log_info0("Right+Left not held for 5 seconds, continuing boot.");
-        }
-
-        return;
-    }
-
-    if (revertIoInit == 0)
-    {
-        Log_warning0("Left button held after reset.");
-        Log_warning0("Hold for 5 seconds to invalidate image and reboot");
-
-        for (uint32_t i = 0; i < sleepDuration / sleepInterval; ++i)
-        {
-            Task_sleep(sleepInterval);
-
-            if (GPIO_read(revertIo))
-            {
-                break;
-            }
-        }
-
-        if (GPIO_read(revertIo) == 0)
-        {
-            ArchBleApplication_revertToFactoryImage();
-        }
-        else
-        {
-            Log_info0("Left not held for 5 seconds, continuing boot.");
-        }
-
-        return;
-    }
-}
-
